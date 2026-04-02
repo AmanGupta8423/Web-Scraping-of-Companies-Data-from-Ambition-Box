@@ -1,0 +1,89 @@
+"""
+This code scrapes company data from AmbitionBox.
+
+It collects company name, rating, reviews, and basic info
+from multiple pages, stores it using pandas, and saves it as a CSV file.
+
+Missing values are handled using try-except.
+"""
+
+# Import required libraries
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+import time
+
+# Lists to store data
+Name = []
+rating = []
+review = []
+about = []
+
+# Loop through first 5 pages
+for j in range(1, 6):
+    
+    # URL for each page
+    url = f'https://www.ambitionbox.com/list-of-companies?page={j}'
+    
+    # Header to act like a browser (avoid blocking)
+    headers = {
+        'User-Agent': 'Mozilla/5.0'
+    }
+    
+    # Get page content
+    response = requests.get(url, headers=headers)
+    webpage = response.text
+    
+    # Parse HTML using BeautifulSoup
+    soup = BeautifulSoup(webpage, 'lxml')
+
+    # Find main container which has all company cards
+    company_section = soup.find('div', class_="col-left")
+    
+    # Find all company cards on the page
+    companies = company_section.find_all('div', class_="companyCardWrapper")
+
+    # Loop through each company card
+    for comp in companies:
+        
+        # Extract company name
+        name = comp.find('h2', class_="companyCardWrapper__companyName").text.strip()
+        Name.append(name)
+
+        # Extract rating (use try in case value is missing)
+        try:
+            rate = comp.find('span', class_="companyCardWrapper__companyRatingValue").text.strip()
+        except:
+            rate = None
+        rating.append(rate)
+
+        # Extract number of reviews
+        try:
+            rev = comp.find('span', class_="companyCardWrapper__companyRatingCount").text.strip()
+        except:
+            rev = None
+        review.append(rev)
+
+        # Extract about/company details
+        try:
+            info = comp.find('span', class_="companyCardWrapper__interLinking").text.strip()
+        except:
+            info = None
+        about.append(info)
+
+    # Small delay to avoid too many requests at once
+    time.sleep(1)
+
+# Create DataFrame from collected data
+data = pd.DataFrame({
+    'company': Name,
+    'rating': rating,
+    'review_number': review,
+    'about': about
+})
+
+# Save data into CSV file
+data.to_csv('Ambition_Companies_data.csv', index=False)
+
+# Print first few rows
+print(data.head())
